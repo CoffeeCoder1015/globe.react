@@ -54,7 +54,7 @@ function GlobeMesh({ lightPosition, ambientLightIntensity }: {
   if (!vertexShader || !fragmentShader) return null
 
   return (
-    <mesh>
+    <mesh renderOrder={2}>
       <sphereGeometry args={[radiusEarth, 100, 50]} />
       <shaderMaterial
         ref={shaderMaterialRef}
@@ -70,19 +70,22 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
   lightPosition: Vector3,
   ambientLightIntensity: number
 }) {
-  const radiusAtmosphere = radiusEarth*1.1
+  const radiusAtmosphere = radiusEarth * 1.1
 
   const shaderMaterialRef = useRef<ShaderMaterial>(null!)
   const [vertexShader, setVertexShader] = useState('')
   const [fragmentShader, setFragmentShader] = useState('')
+  const [haloShader, setHaloShader] = useState('')
 
   useEffect(() => {
     Promise.all([
       fetch('/atmosphere/vert.glsl').then(res => res.text()),
-      fetch('/atmosphere/frag.glsl').then(res => res.text())
-    ]).then(([vert, frag]) => {
+      fetch('/atmosphere/frag.glsl').then(res => res.text()),
+      fetch('/atmosphere/halo.glsl').then(res => res.text())
+    ]).then(([vert, frag, halo]) => {
       setVertexShader(vert)
       setFragmentShader(frag)
+      setHaloShader(halo)
     })
   }, [])
 
@@ -102,17 +105,31 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
   if (!vertexShader || !fragmentShader) return null
 
   return (
-    <mesh>
+    <>
+    <mesh renderOrder={0}>
+      <sphereGeometry args={[radiusEarth, 64, 64]} />
+      <meshBasicMaterial
+        colorWrite={false}
+        depthWrite={false}
+        stencilWrite={true}
+        stencilFunc={THREE.AlwaysStencilFunc}
+        stencilRef={1}
+        stencilZPass={THREE.ReplaceStencilOp}
+      />
+    </mesh>
+    <mesh renderOrder={1}>
       <sphereGeometry args={[radiusAtmosphere, 160, 80]} />
       <shaderMaterial
         ref={shaderMaterialRef}
         vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
+        fragmentShader={haloShader}
         uniforms={uniforms}
-        side={THREE.DoubleSide}
-        blending={THREE.AdditiveBlending}
+        stencilWrite
+        stencilFunc={THREE.NotEqualStencilFunc}
+        stencilRef={1}
       />
     </mesh>
+    </>
   )
 }
 
@@ -158,7 +175,7 @@ function GlobeScene() {
 export function Globe() {
   return (
     <div className="w-[100vw] h-[100vh]">
-      <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 0, 20] }}>
+      <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 0, 20] }} gl={{stencil:true}}>
         <GlobeScene />
       </Canvas>
     </div>
