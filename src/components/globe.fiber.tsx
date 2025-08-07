@@ -129,6 +129,16 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
         stencilRef={1}
       />
     </mesh>
+    <mesh renderOrder={2}>
+      <sphereGeometry args={[radiusEarth*1.07, 160, 80]} />
+      <shaderMaterial
+        ref={shaderMaterialRef}
+        vertexShader={vertexShader}
+        fragmentShader={fragmentShader}
+        uniforms={uniforms}
+        transparent
+      />
+    </mesh>
     </>
   )
 }
