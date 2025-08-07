@@ -16,11 +16,11 @@ function latLonToCartesian(lat: number, lon: number, radius = 1) {
   return new Vector3(x, y, z)
 }
 
+const radiusEarth = 10
 function GlobeMesh({ lightPosition, ambientLightIntensity }: {
   lightPosition: Vector3,
   ambientLightIntensity: number
 }) {
-  const radiusEarth = 10
   const dayTexture = useLoader(TextureLoader, '/globe/earth-day.jpg')
   const nightTexture = useLoader(TextureLoader, '/globe/earth-night.jpg')
 
@@ -70,8 +70,7 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
   lightPosition: Vector3,
   ambientLightIntensity: number
 }) {
-  const radiusEarth = 10
-  const radiusAtmosphere = radiusEarth * 1.1
+  const radiusAtmosphere = radiusEarth*1.1
 
   const shaderMaterialRef = useRef<ShaderMaterial>(null!)
   const [vertexShader, setVertexShader] = useState('')
@@ -110,7 +109,8 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={uniforms}
-        transparent
+        side={THREE.DoubleSide}
+        blending={THREE.AdditiveBlending}
       />
     </mesh>
   )
@@ -157,7 +157,7 @@ function GlobeScene() {
 
 export function Globe() {
   return (
-    <div className="w-[50vw] h-[50vh]">
+    <div className="w-[100vw] h-[100vh]">
       <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 0, 20] }}>
         <GlobeScene />
       </Canvas>

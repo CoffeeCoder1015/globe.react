@@ -1,5 +1,6 @@
 varying vec2 vertexUV;
 varying vec3 vNormal;
+varying vec4 apparent_pos;
 
 uniform vec3 lightPosition;
 uniform float ambientLightIntensity;
@@ -12,73 +13,9 @@ uniform float radiusAtmosphere;
 
 #define orangBandThickness 1.5
 
-float gammaCorrection(float x){
-    return x*x - 0.25;
-}
-
-float sigmoid(float x){
-    return 1. / (1. + exp(-x));
-}
-
-float channelColoration(float dist,float cosTheta, float specificConst){
-    float thetaSqr = pow( acos(cosTheta),2. );
-    float mappedDistance = orangBandThickness*dist*exp(-2.*cosTheta)-dist*(orangBandThickness-exp(-2.*cosTheta));
-    float expDec = exp(-specificConst*mappedDistance*thetaSqr);
-    return gammaCorrection(sigmoid(
-        expDec*pow(cosTheta,2.)
-    ));
-}
-
-
-vec3 rrgb(vec3 pos){
-    vec3 F = lightPosition-pos;
-    vec3 unit = normalize(F);
-    float pdotu = dot(pos,unit);
-    float xSqred = dot(pos,pos);
-    float cosTheta = pdotu / sqrt(xSqred);
-    cosTheta+=2./sqrt(xSqred)*(0.6-dot(normalize(lightPosition),normalize(cameraPosition)));
-
-    float dist = -pdotu + sqrt(pow(pdotu,2.) - xSqred + rAtmSqr);
-
-    vec3 rawColors = vec3(
-        channelColoration(dist,cosTheta,0.21),
-        channelColoration(dist,cosTheta,0.43),
-        channelColoration(dist,cosTheta,1.0)
-    );
-    
-    float totalContribution = rawColors.x+rawColors.y+rawColors.z;
-    float exposureCoeff = 3.*cosTheta/totalContribution;
-    vec3 finalColor = rawColors*exposureCoeff;
-    return finalColor;
-}
-
-void main(){
-    // reverse halo effect
-    float bloomintensity = dot(vNormal,normalize( cameraPosition ));
-    float sun_on_lignt = dot(normalize(lightPosition),normalize(cameraPosition));
-    float intensity = pow(bloomintensity,4.);
-    
-    // general lighting
-    vec3 lightDirection = lightPosition-vNormal*radiusAtmosphere;
-    float lightingIntensity = dot(normalize(lightDirection), vNormal);
-    
-    // handroll rayleigh
-    vec3 lightadj = rrgb(radiusEarth*vNormal);
-    gl_FragColor = vec4(lightadj,0.7*clamp(intensity, 0., 1. ))+0.4*lightingIntensity*-sun_on_lignt;
-    
-    // camera
-    vec3 con = normalize( cameraPosition );
-    float t = dot(con,radiusAtmosphere/2.*normalize(vNormal)); // ig its not really the radius?!
-    if(rAtmSqr - t*t - 0.9 >= radiusEarth*radiusEarth){
-        float i = pow(0.5 - dot(vNormal, vec3(0,0,1.)),2.);
-        vec4 blueHue = vec4(0.5,0.6,1.,1.);
-        blueHue.xyz *= lightingIntensity+gl_FragColor.xyz;
-        blueHue.xyz = clamp(blueHue.xyz,0.2,7.);
-        blueHue.w = clamp(lightingIntensity,0.3,0.7);
-        gl_FragColor = blueHue;
-        // gl_FragColor = blueHue*gl_FragColor+lightingIntensity/4.;
-        gl_FragColor*=intensity*t/2.*(1.-sun_on_lignt*0.5);    
+void main() {
+    float d = radiusAtmosphere*distance(apparent_pos.xy, vec2(0.));
+    if (d > radiusEarth){
+        gl_FragColor = vec4(apparent_pos);
     }
-
-
 }
