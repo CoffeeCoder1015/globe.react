@@ -80,7 +80,7 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
   useEffect(() => {
     Promise.all([
       fetch('/atmosphere/vert.glsl').then(res => res.text()),
-      fetch('/atmosphere/frag.glsl').then(res => res.text()),
+      fetch('/atmosphere/newfrag.glsl').then(res => res.text()),
       fetch('/atmosphere/halo.glsl').then(res => res.text())
     ]).then(([vert, frag, halo]) => {
       setVertexShader(vert)
@@ -130,7 +130,7 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
       />
     </mesh>
     <mesh renderOrder={2}>
-      <sphereGeometry args={[radiusEarth*1.07, 160, 80]} />
+      <sphereGeometry args={[radiusEarth*1.01, 160, 80]} />
       <shaderMaterial
         ref={shaderMaterialRef}
         vertexShader={vertexShader}

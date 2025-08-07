@@ -65,5 +65,4 @@ void main(){
     // handroll rayleigh
     vec3 lightadj = rrgb(radiusEarth*vNormal);
     gl_FragColor = vec4(lightadj,0.7*clamp(intensity, 0., 1. ))+0.4*lightingIntensity*-sun_on_lignt;
-
 }
