@@ -100,5 +100,6 @@ void main(){
     vec3 XYZ = RayToXYZ(lightingIntensity*7.);
     vec3 RGB = XYZtoRGB(XYZ);
 
-    gl_FragColor = vec4(RGB,0.7*clamp(intensity, 0., 1. ));
+    float facing = 1.-abs(lightingIntensity);
+    gl_FragColor = vec4(RGB,0.5*clamp(intensity, 0., 1. )) * facing ;
 }
