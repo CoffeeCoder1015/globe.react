@@ -22,7 +22,7 @@ function GlobeMesh({ lightPosition, ambientLightIntensity }: {
   lightPosition: Vector3,
   ambientLightIntensity: number
 }) {
-  console.log(window.location.href)
+  // console.log(window.location.href)
   const dayTexture = useLoader(TextureLoader,`${window.location.href}/globe/earth-day.jpg`)
   const nightTexture = useLoader(TextureLoader, `${window.location.href}/globe/earth-night.jpg`)
 
