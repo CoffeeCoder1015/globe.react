@@ -22,15 +22,8 @@ function GlobeMesh({ lightPosition, ambientLightIntensity }: {
   lightPosition: Vector3,
   ambientLightIntensity: number
 }) {
-  const [basePath, setBasePath] = useState('');
-
-  useEffect(() => {
-    const pathname = window.location.pathname; // e.g. "/myapp/page1"
-    setBasePath(pathname);
-  }, []);
-
-  const dayTexture = useLoader(TextureLoader,`${basePath}/globe/earth-day.jpg`)
-  const nightTexture = useLoader(TextureLoader, `${basePath}/globe/earth-night.jpg`)
+  const dayTexture = useLoader(TextureLoader,`${window.location.href}/globe/earth-day.jpg`)
+  const nightTexture = useLoader(TextureLoader, `${window.location.href}/globe/earth-night.jpg`)
 
   const shaderMaterialRef = useRef<ShaderMaterial>(null!)
   const [vertexShader, setVertexShader] = useState('')
@@ -38,8 +31,8 @@ function GlobeMesh({ lightPosition, ambientLightIntensity }: {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${basePath}/globe/vert.glsl`).then(res => res.text()),
-      fetch(`${basePath}/globe/frag.glsl`).then(res => res.text())
+      fetch(`${window.location.href}/globe/vert.glsl`).then(res => res.text()),
+      fetch(`${window.location.href}/globe/frag.glsl`).then(res => res.text())
     ]).then(([vert, frag]) => {
       setVertexShader(vert)
       setFragmentShader(frag)
@@ -78,13 +71,6 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
   lightPosition: Vector3,
   ambientLightIntensity: number
 }) {
-  const [basePath, setBasePath] = useState('');
-
-  useEffect(() => {
-    const pathname = window.location.pathname; // e.g. "/myapp/page1"
-    setBasePath(pathname);
-  }, []);
-
   const radiusAtmosphere = radiusEarth * 1.1
 
   const shaderMaterialRef = useRef<ShaderMaterial>(null!)
@@ -94,9 +80,9 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${basePath}/atmosphere/vert.glsl`).then(res => res.text()),
-      fetch(`${basePath}/atmosphere/frag.glsl`).then(res => res.text()),
-      fetch(`${basePath}/atmosphere/halo.glsl`).then(res => res.text())
+      fetch(`${window.location.href}/atmosphere/vert.glsl`).then(res => res.text()),
+      fetch(`${window.location.href}/atmosphere/frag.glsl`).then(res => res.text()),
+      fetch(`${window.location.href}/atmosphere/halo.glsl`).then(res => res.text())
     ]).then(([vert, frag, halo]) => {
       setVertexShader(vert)
       setFragmentShader(frag)
