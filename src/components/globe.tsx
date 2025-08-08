@@ -26,8 +26,7 @@ function GlobeMesh({ lightPosition, ambientLightIntensity }: {
 
   useEffect(() => {
     const pathname = window.location.pathname; // e.g. "/myapp/page1"
-    const base = pathname.split('/')[1]; // "myapp"
-    setBasePath(base ? `/${base}` : '');
+    setBasePath(pathname);
   }, []);
 
   const dayTexture = useLoader(TextureLoader,`${basePath}/globe/earth-day.jpg`)
@@ -83,8 +82,7 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
 
   useEffect(() => {
     const pathname = window.location.pathname; // e.g. "/myapp/page1"
-    const base = pathname.split('/')[1]; // "myapp"
-    setBasePath(base ? `/${base}` : '');
+    setBasePath(pathname);
   }, []);
 
   const radiusAtmosphere = radiusEarth * 1.1
