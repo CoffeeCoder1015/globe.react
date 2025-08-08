@@ -1,158 +1,193 @@
 "use client"
-import { useEffect, useRef } from "react";
+
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { TextureLoader, Vector3, ShaderMaterial } from 'three'
 import * as THREE from "three";
-import { getSubsolarCoordinates } from "@/lib/sunpos";
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLoader } from '@react-three/fiber'
+import { getSubsolarCoordinates } from '@/lib/sunpos'
 
 function latLonToCartesian(lat: number, lon: number, radius = 1) {
-    const phi = (90 - lat) * (Math.PI / 180);
-    const theta = (lon + 180) * (Math.PI / 180);
-
-    const x = -radius * Math.sin(phi) * Math.cos(theta);
-    const z = radius * Math.sin(phi) * Math.sin(theta);
-    const y = radius * Math.cos(phi);
-
-    return new THREE.Vector3(x, y, z);
+  const phi = (90 - lat) * (Math.PI / 180)
+  const theta = (lon + 180) * (Math.PI / 180)
+  const x = -radius * Math.sin(phi) * Math.cos(theta)
+  const z = radius * Math.sin(phi) * Math.sin(theta)
+  const y = radius * Math.cos(phi)
+  return new Vector3(x, y, z)
 }
 
-let canvas: HTMLCanvasElement;
+const radiusEarth = 10
+function GlobeMesh({ lightPosition, ambientLightIntensity }: {
+  lightPosition: Vector3,
+  ambientLightIntensity: number
+}) {
+  const dayTexture = useLoader(TextureLoader, '/globe/earth-day.jpg')
+  const nightTexture = useLoader(TextureLoader, '/globe/earth-night.jpg')
 
-function initScene(currentMount: HTMLDivElement) {
-    const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 1000)
-    camera.position.z = 20
-    // eye balling prime meridian 2.0
-    const yAxis = new THREE.Vector3(0, 1, 0)
-    const xAxis = new THREE.Vector3(1, 0, 0)
-    camera.position.applyAxisAngle(yAxis, Math.PI / 2);
-    camera.lookAt(new THREE.Vector3(0, 0, 0))
+  const shaderMaterialRef = useRef<ShaderMaterial>(null!)
+  const [vertexShader, setVertexShader] = useState('')
+  const [fragmentShader, setFragmentShader] = useState('')
 
-    function moveTo(lat: number, lon: number) {
-        const current = latLonToCartesian(lat, lon).multiplyScalar(20);
-        camera.position.copy(current)
-        camera.lookAt(new THREE.Vector3(0, 0, 0))
-    }
-    navigator.geolocation.getCurrentPosition((pos) => {
-        moveTo(pos.coords.latitude, pos.coords.longitude)
+  useEffect(() => {
+    Promise.all([
+      fetch('/globe/vert.glsl').then(res => res.text()),
+      fetch('/globe/frag.glsl').then(res => res.text())
+    ]).then(([vert, frag]) => {
+      setVertexShader(vert)
+      setFragmentShader(frag)
     })
+  }, [])
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
-    renderer.setClearColor(0x000000, 0)
-    renderer.setPixelRatio(window.devicePixelRatio)
-    renderer.setSize(currentMount.clientWidth, currentMount.clientHeight)
-
-    canvas = renderer.domElement;
-
-    const lightPosition = new THREE.Vector3(100, 0, 0)
-    const ambientLightIntensity = 0.06
-
-    const radiusEarth = 10;
-    const radiuSAtmosphere = 1.1 * radiusEarth;
-    const globe = new THREE.Mesh(new THREE.SphereGeometry(radiusEarth, 100, 50), new THREE.ShaderMaterial());
-    scene.add(globe);
-    const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(radiuSAtmosphere, 160, 80), new THREE.ShaderMaterial());
-    scene.add(atmosphere);
-
-    async function render() {
-        const [vertexGlobe, fragmentGlobe] = await Promise.all([
-            fetch("./globe/vert.glsl").then(res => res.text()),
-            fetch("./globe/frag.glsl").then(res => res.text())
-        ])
-
-        const [vertexAtmosphere, fragmentAtmosphere] = await Promise.all([
-            fetch("./atmosphere/vert.glsl").then(res => res.text()),
-            fetch("./atmosphere/frag.glsl").then(res => res.text())
-        ])
-
-        const shaderGlobe = new THREE.ShaderMaterial({
-            vertexShader: vertexGlobe,
-            fragmentShader: fragmentGlobe,
-            uniforms: {
-                dayTexture: {
-                    value: new THREE.TextureLoader().load("./globe/earth-day.jpg")
-                },
-                nightTexture: {
-                    value: new THREE.TextureLoader().load("./globe/earth-night.jpg")
-                },
-                lightPosition: {
-                    value: lightPosition
-                },
-                ambientLightIntensity: {
-                    value: ambientLightIntensity
-                }
-            }
-        })
-        globe.material = shaderGlobe
-
-        const shaderAtmosphere = new THREE.ShaderMaterial({
-            vertexShader: vertexAtmosphere,
-            fragmentShader: fragmentAtmosphere,
-            transparent: true,
-            uniforms: {
-                lightPosition: {
-                    value: lightPosition
-                },
-                ambientLightIntensity: {
-                    value: ambientLightIntensity
-                },
-                radiusEarth: {
-                    value: radiusEarth
-                },
-                radiusAtmosphere: {
-                    value: radiuSAtmosphere
-                }
-            }
-        })
-        atmosphere.material = shaderAtmosphere
+  useFrame(() => {
+    if (shaderMaterialRef.current) {
+      shaderMaterialRef.current.uniforms.lightPosition.value.copy(lightPosition)
     }
-    render()
+  })
 
-    setInterval(() => {
-        const d = new Date();
-        const [longitude, latitude] = getSubsolarCoordinates(d);
-        const pos = latLonToCartesian(latitude, longitude - 180).multiplyScalar(100)
-        lightPosition.copy(pos)
-    }, 100);
+  const uniforms = useMemo(() => ({
+    dayTexture: { value: dayTexture },
+    nightTexture: { value: nightTexture },
+    lightPosition: { value: lightPosition },
+    ambientLightIntensity: { value: ambientLightIntensity },
+  }), [dayTexture, nightTexture, lightPosition])
 
+  if (!vertexShader || !fragmentShader) return null
 
-    function animate() {
-        requestAnimationFrame(animate)
-        const glp = globe.material.uniforms.lightPosition
-        const alp = atmosphere.material.uniforms.lightPosition
-
-        // camera orbit
-        // camera.position.applyAxisAngle(new THREE.Vector3(0,1,1),1/200);
-        // camera.lookAt(new THREE.Vector3(0,0,0))
-
-        if (glp != undefined) {
-            glp.value.set(...lightPosition)
-            alp.value.set(...lightPosition)
-        }
-        renderer.render(scene, camera)
-    }
-    animate()
+  return (
+    <mesh renderOrder={2}>
+      <sphereGeometry args={[radiusEarth, 100, 50]} />
+      <shaderMaterial
+        ref={shaderMaterialRef}
+        vertexShader={vertexShader}
+        fragmentShader={fragmentShader}
+        uniforms={uniforms}
+      />
+    </mesh>
+  )
 }
 
+function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
+  lightPosition: Vector3,
+  ambientLightIntensity: number
+}) {
+  const radiusAtmosphere = radiusEarth * 1.1
+
+  const shaderMaterialRef = useRef<ShaderMaterial>(null!)
+  const [vertexShader, setVertexShader] = useState('')
+  const [fragmentShader, setFragmentShader] = useState('')
+  const [haloShader, setHaloShader] = useState('')
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/atmosphere/vert.glsl').then(res => res.text()),
+      fetch('/atmosphere/frag.glsl').then(res => res.text()),
+      fetch('/atmosphere/halo.glsl').then(res => res.text())
+    ]).then(([vert, frag, halo]) => {
+      setVertexShader(vert)
+      setFragmentShader(frag)
+      setHaloShader(halo)
+    })
+  }, [])
+
+  useFrame(() => {
+    if (shaderMaterialRef.current) {
+      shaderMaterialRef.current.uniforms.lightPosition.value.copy(lightPosition)
+    }
+  })
+
+  const uniforms = useMemo(() => ({
+    lightPosition: { value: lightPosition },
+    ambientLightIntensity: { value: ambientLightIntensity },
+    radiusEarth: { value: radiusEarth },
+    radiusAtmosphere: { value: radiusAtmosphere },
+  }), [lightPosition])
+
+  if (!vertexShader || !fragmentShader) return null
+
+  return (
+    <>
+    <mesh renderOrder={0}>
+      <sphereGeometry args={[radiusEarth, 64, 64]} />
+      <meshBasicMaterial
+        colorWrite={false}
+        depthWrite={false}
+        stencilWrite={true}
+        stencilFunc={THREE.AlwaysStencilFunc}
+        stencilRef={1}
+        stencilZPass={THREE.ReplaceStencilOp}
+      />
+    </mesh>
+    <mesh renderOrder={1}>
+      <sphereGeometry args={[radiusAtmosphere, 160, 80]} />
+      <shaderMaterial
+        ref={shaderMaterialRef}
+        vertexShader={vertexShader}
+        fragmentShader={haloShader}
+        uniforms={uniforms}
+        stencilWrite
+        stencilFunc={THREE.NotEqualStencilFunc}
+        stencilRef={1}
+      />
+    </mesh>
+    <mesh renderOrder={2}>
+      <sphereGeometry args={[radiusEarth*1.01, 160, 80]} />
+      <shaderMaterial
+        ref={shaderMaterialRef}
+        vertexShader={vertexShader}
+        fragmentShader={fragmentShader}
+        uniforms={uniforms}
+        transparent
+      />
+    </mesh>
+    </>
+  )
+}
+
+function GlobeScene() {
+  const lightPosition = useRef(new Vector3(100, 0, 0)).current
+  const ambientLightIntensity = 0.06
+
+  const { camera } = useThree()
+
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const vec = latLonToCartesian(pos.coords.latitude, pos.coords.longitude, 20)
+      camera.position.copy(vec)
+      camera.lookAt(0, 0, 0)
+
+    })
+  }, [camera])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const [lon, lat] = getSubsolarCoordinates(new Date())
+      lightPosition.copy(latLonToCartesian(lat, lon - 180, 100))
+    }, 100)
+
+    const interval2 = setInterval(() => {
+        camera.position.applyAxisAngle(new THREE.Vector3(0,1,0),1/200);
+        camera.lookAt(new THREE.Vector3(0,0,0))
+    }, 20)
+    return () => { 
+        clearInterval(interval) 
+        clearInterval(interval2) 
+    }
+  }, [])
+
+  return (
+    <>
+      <GlobeMesh lightPosition={lightPosition} ambientLightIntensity={ambientLightIntensity} />
+      <AtmosphereMesh lightPosition={lightPosition} ambientLightIntensity={ambientLightIntensity} />
+    </>
+  )
+}
 
 export function Globe() {
-    const renderRef = useRef<HTMLDivElement | null>(null)
-
-    useEffect(() => {
-        const currentMount = renderRef.current
-        if (!currentMount) {
-            return
-        }
-
-        if (!canvas) {
-            initScene(currentMount)
-        }
-
-        if (canvas && !currentMount.contains(canvas)) {
-            currentMount.appendChild(canvas);
-        }
-    }, [])
-
-    return (
-            <div ref={renderRef} className="w-[50vw] h-[50vh]"></div>
-    )
+  return (
+    <div className="w-[100vw] h-[100vh]">
+      <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 0, 20] }} gl={{stencil:true}}>
+        <GlobeScene />
+      </Canvas>
+    </div>
+  )
 }
-
