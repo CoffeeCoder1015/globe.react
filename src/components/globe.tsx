@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLoader } from '@react-three/fiber'
 import { getSubsolarCoordinates } from '@/lib/sunpos'
 
+
 function latLonToCartesian(lat: number, lon: number, radius = 1) {
   const phi = (90 - lat) * (Math.PI / 180)
   const theta = (lon + 180) * (Math.PI / 180)
@@ -21,8 +22,16 @@ function GlobeMesh({ lightPosition, ambientLightIntensity }: {
   lightPosition: Vector3,
   ambientLightIntensity: number
 }) {
-  const dayTexture = useLoader(TextureLoader, '/globe/earth-day.jpg')
-  const nightTexture = useLoader(TextureLoader, '/globe/earth-night.jpg')
+  const [basePath, setBasePath] = useState('');
+
+  useEffect(() => {
+    const pathname = window.location.pathname; // e.g. "/myapp/page1"
+    const base = pathname.split('/')[1]; // "myapp"
+    setBasePath(base ? `/${base}` : '');
+  }, []);
+
+  const dayTexture = useLoader(TextureLoader,`${basePath}/globe/earth-day.jpg`)
+  const nightTexture = useLoader(TextureLoader, `${basePath}/globe/earth-night.jpg`)
 
   const shaderMaterialRef = useRef<ShaderMaterial>(null!)
   const [vertexShader, setVertexShader] = useState('')
@@ -30,8 +39,8 @@ function GlobeMesh({ lightPosition, ambientLightIntensity }: {
 
   useEffect(() => {
     Promise.all([
-      fetch('/globe/vert.glsl').then(res => res.text()),
-      fetch('/globe/frag.glsl').then(res => res.text())
+      fetch(`${basePath}/globe/vert.glsl`).then(res => res.text()),
+      fetch(`${basePath}/globe/frag.glsl`).then(res => res.text())
     ]).then(([vert, frag]) => {
       setVertexShader(vert)
       setFragmentShader(frag)
@@ -70,6 +79,14 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
   lightPosition: Vector3,
   ambientLightIntensity: number
 }) {
+  const [basePath, setBasePath] = useState('');
+
+  useEffect(() => {
+    const pathname = window.location.pathname; // e.g. "/myapp/page1"
+    const base = pathname.split('/')[1]; // "myapp"
+    setBasePath(base ? `/${base}` : '');
+  }, []);
+
   const radiusAtmosphere = radiusEarth * 1.1
 
   const shaderMaterialRef = useRef<ShaderMaterial>(null!)
@@ -79,9 +96,9 @@ function AtmosphereMesh({ lightPosition, ambientLightIntensity }: {
 
   useEffect(() => {
     Promise.all([
-      fetch('/atmosphere/vert.glsl').then(res => res.text()),
-      fetch('/atmosphere/frag.glsl').then(res => res.text()),
-      fetch('/atmosphere/halo.glsl').then(res => res.text())
+      fetch(`${basePath}/atmosphere/vert.glsl`).then(res => res.text()),
+      fetch(`${basePath}/atmosphere/frag.glsl`).then(res => res.text()),
+      fetch(`${basePath}/atmosphere/halo.glsl`).then(res => res.text())
     ]).then(([vert, frag, halo]) => {
       setVertexShader(vert)
       setFragmentShader(frag)
